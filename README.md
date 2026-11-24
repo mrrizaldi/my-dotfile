@@ -39,6 +39,9 @@ Then add the GRUB cmdline `--system` prints, and put API keys in `~/.config/shel
 Files in `~` are symlinks into `home/`, so edits show up in `git diff` directly.
 New file to track: move it into the matching `home/<pkg>/` path and run `./bootstrap.sh --link`.
 
+User units are symlinks too, so systemd sees them as "linked": `systemctl --user disable <unit>`
+deletes the link itself. Run `./bootstrap.sh --link` afterwards to put it back.
+
 After a KooL upgrade (`copy.sh --upgrade` moves `~/.config/hypr` and `~/.config/quickshell` aside and
 copies fresh ones, dropping the links): commit first, then `./bootstrap.sh --link` (repo version wins).
 

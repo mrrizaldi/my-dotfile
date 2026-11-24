@@ -62,8 +62,8 @@ do_link() {
   local m=~/.config/hypr/hyprlock-matrix
   if [ ! -d "$m/rain" ] && command -v magick >/dev/null; then python3 "$m/gen.py"; fi
 
-  systemctl --user daemon-reload && systemctl --user enable polkit-agent.service service-memory-watch.timer \
-    || echo "systemd --user not reachable; enable polkit-agent.service + service-memory-watch.timer later."
+  systemctl --user daemon-reload && systemctl --user enable polkit-agent.service \
+    || echo "systemd --user not reachable; enable polkit-agent.service later."
 
   [ -f ~/.config/shell/secrets.sh ] || echo "Create ~/.config/shell/secrets.sh (chmod 600) for API keys."
   echo "Linked: $pkgs (from $REPO/home)"
