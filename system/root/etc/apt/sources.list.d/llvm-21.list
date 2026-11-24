@@ -1,0 +1,1 @@
+deb [signed-by=/etc/apt/keyrings/llvm.gpg] https://apt.llvm.org/trixie/ llvm-toolchain-trixie-21 main

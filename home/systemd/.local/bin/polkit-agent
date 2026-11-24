@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -u
+
+LOG_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/polkit-agent.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+echo "[$(date -Is)] starting polkit-agent wrapper" >>"$LOG_FILE"
+if pgrep -u "$UID" -f 'polkit-mate-authentication-agent-1|polkit-gnome-authentication-agent-1|polkit-kde-authentication-agent-1|xfce-polkit' >/dev/null 2>&1; then
+  echo "[$(date -Is)] agent already running, exiting" >>"$LOG_FILE"
+  exit 0
+fi
+if pgrep -u "$UID" -f 'hyprpolkitagent' >/dev/null 2>&1; then
+  echo "[$(date -Is)] hyprpolkitagent running, replacing it" >>"$LOG_FILE"
+  pkill -u "$UID" -f 'hyprpolkitagent' || true
+fi
+
+candidates=(
+  "/usr/local/libexec/hyprpolkitagent"
+  "/usr/local/bin/hyprpolkitagent"
+  "/usr/libexec/hyprpolkitagent"
+  "/usr/bin/hyprpolkitagent"
+  "/usr/lib/hyprpolkitagent/hyprpolkitagent"
+  "/usr/lib/hyprpolkitagent"
+  "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"
+  "/usr/libexec/polkit-gnome-authentication-agent-1"
+  "/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1"
+  "/usr/libexec/polkit-mate-authentication-agent-1"
+  "/usr/lib/polkit-mate/polkit-mate-authentication-agent-1"
+  "/usr/bin/polkit-mate-authentication-agent-1"
+  "/usr/lib/polkit-kde-authentication-agent-1"
+  "/usr/libexec/polkit-kde-authentication-agent-1"
+  "/usr/bin/polkit-kde-authentication-agent-1"
+  "/usr/bin/xfce-polkit"
+  "/usr/lib/xfce4/polkit-agent/xfce-polkit"
+  "/usr/libexec/xfce-polkit"
+)
+
+for exe in "${candidates[@]}"; do
+  if [ -x "$exe" ]; then
+    echo "[$(date -Is)] trying: $exe" >>"$LOG_FILE"
+    "$exe" &
+    pid=$!
+    wait "$pid"
+    status=$?
+    echo "[$(date -Is)] exit: $exe status=$status" >>"$LOG_FILE"
+    if [ "$status" -eq 0 ]; then
+      exit 0
+    fi
+  fi
+done
+
+echo "No supported polkit agent found." >&2
+echo "[$(date -Is)] no supported polkit agent found" >>"$LOG_FILE"
+exit 1

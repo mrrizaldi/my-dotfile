@@ -1,2 +1,9 @@
-__pycache__/
-bookmarks
+.cache/
+*.bak
+*.bak-*
+*.bak.*
+*~
+secrets.sh
+**/LegacyConfigs/
+home/hypr/.config/hypr/hyprlock-matrix/rain/
+home/hypr/.config/hypr/hyprlock-matrix/hud/

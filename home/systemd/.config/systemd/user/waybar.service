@@ -1,0 +1,17 @@
+# Override of /usr/lib/systemd/user/waybar.service so a crashed bar comes back
+# (waybar 0.12 segfaults in the mpris module when players re-register).
+# No [Install] on purpose: unit reads as "static", so WaybarStartup.sh starts it
+# via `systemctl --user start` AFTER it imported WAYLAND_DISPLAY; systemd never
+# autostarts it before the env exists.
+[Unit]
+Description=Waybar (KooL dots, hypr/waybar config, auto-restart)
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
+
+[Service]
+# Same config resolution as WaybarStartup.sh's kooldots_waybar_config().
+ExecStart=/bin/sh -c 'c=$$(%h/.config/hypr/scripts/DisplayProfile.sh waybar-config 2>/dev/null | tail -n1); [ -f "$$c" ] || c=%h/.config/hypr/waybar/config; exec /usr/bin/waybar -c "$$c" -s %h/.config/hypr/waybar/style.css'
+ExecReload=kill -SIGUSR2 $MAINPID
+Restart=on-failure
+RestartSec=2

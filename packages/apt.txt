@@ -1,0 +1,25 @@
+# Packages installed on top of Debian 13 + the KooL Debian-Hyprland installer.
+# bootstrap.sh strips comments/blank lines and runs: apt install <rest>
+# Third-party repos come from system/root/etc/apt/sources.list.d (bootstrap.sh --system).
+
+# cli
+arp-scan dos2unix dosfstools ethtool file-roller gh glab glow gobuster htop
+lazygit lynx mosquitto-clients neovim netcat-traditional nmap p7zip-full pipx
+python3.13-venv stow tmux unrar usbutils vim w3m wev xclip xdotool zstd
+
+# desktop apps
+copyq gnome-keyring gparted gthumb obs-studio qt5-style-kvantum seahorse
+simplescreenrecorder timeshift vlc wireshark zathura zathura-pdf-poppler
+
+# dev / services
+awscli default-jdk postgresql redis-server texlive-full kicad k6
+docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+pgadmin4 pgadmin4-desktop pgadmin4-web metasploit-framework
+
+# third-party desktop
+antigravity brave-browser chatgpt claude-desktop google-chrome-stable
+
+# hardware (HP Victus: Intel iGPU + RTX 3050, NVIDIA CUDA repo, driver 595)
+intel-gpu-tools ntfs-3g dislocker wireguard wireless-tools wpasupplicant
+nvidia-driver-pinning-595 nvidia-kernel-open-dkms nvidia-driver-libs:i386 nvidia-vulkan-icd:i386
+steam-installer

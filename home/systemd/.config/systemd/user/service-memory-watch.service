@@ -1,0 +1,16 @@
+[Unit]
+Description=Monitor RAM dan swap systemd services
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/mrrizaldi/.local/bin/service-memory-watch
+
+Environment=THRESHOLD_MIB=1536
+Environment=COOLDOWN_MINUTES=15
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

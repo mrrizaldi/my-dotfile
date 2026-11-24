@@ -1,0 +1,12 @@
+[Unit]
+Description=Periksa RAM dan swap service setiap 1min
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1min
+AccuracySec=10s
+Persistent=true
+Unit=service-memory-watch.service
+
+[Install]
+WantedBy=timers.target

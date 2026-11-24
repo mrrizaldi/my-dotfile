@@ -1,0 +1,16 @@
+[Default Applications]
+text/html=brave-browser.desktop
+x-scheme-handler/http=brave-browser.desktop
+x-scheme-handler/https=brave-browser.desktop
+x-scheme-handler/about=brave-browser.desktop
+x-scheme-handler/unknown=brave-browser.desktop
+application/x-extension-burp=install4j_1uji1gi-BurpSuite.desktop
+inode/directory=thunar.desktop
+application/x-wayland-gnome-saved-search=thunar.desktop
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+x-scheme-handler/discord-424004941485572097=discord-424004941485572097.desktop
+x-scheme-handler/codex=chatgpt.desktop
+x-scheme-handler/burp=install4j_1uji1gi-BurpSuite.desktop
+
+[Added Associations]
+image/jpeg=org.gnome.Loupe.desktop;google-chrome.desktop;

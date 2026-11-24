@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+
+set -u
+set -o pipefail
+
+# ============================================================
+# Konfigurasi
+# Nilainya dapat diubah lewat Environment= di systemd service.
+# ============================================================
+
+THRESHOLD_MIB="${THRESHOLD_MIB:-1536}"
+COOLDOWN_MINUTES="${COOLDOWN_MINUTES:-15}"
+
+THRESHOLD_BYTES=$((THRESHOLD_MIB * 1024 * 1024))
+COOLDOWN_SECONDS=$((COOLDOWN_MINUTES * 60))
+
+STATE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/service-memory-watch"
+LOG_TAG="service-memory-watch"
+
+mkdir -p "$STATE_DIR"
+
+log_message() {
+    logger --tag "$LOG_TAG" -- "$*" 2>/dev/null || true
+}
+
+numeric_or_zero() {
+    local value="${1:-}"
+
+    if [[ "$value" =~ ^[0-9]+$ ]]; then
+        printf '%s' "$value"
+    else
+        printf '0'
+    fi
+}
+
+human_bytes() {
+    local bytes="${1:-0}"
+
+    numfmt \
+        --to=iec-i \
+        --suffix=B \
+        --format="%.1f" \
+        "$bytes" 2>/dev/null || printf '%s B' "$bytes"
+}
+
+send_notification() {
+    local unit="$1"
+    local ram="$2"
+    local swap="$3"
+    local total="$4"
+
+    local title="Penggunaan memori service tinggi"
+    local body
+
+    body="Service: $unit
+RAM: $(human_bytes "$ram")
+Swap: $(human_bytes "$swap")
+Total: $(human_bytes "$total")
+Batas: ${THRESHOLD_MIB} MiB"
+
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send \
+            --urgency=critical \
+            --app-name="Service Memory Watch" \
+            --icon=dialog-warning \
+            "$title" \
+            "$body" 2>/dev/null || {
+                log_message "Gagal mengirim notifikasi desktop untuk $unit"
+                return 1
+            }
+    else
+        log_message "notify-send tidak ditemukan"
+        return 1
+    fi
+
+    log_message \
+        "$unit melewati batas: RAM=$(human_bytes "$ram"), Swap=$(human_bytes "$swap"), Total=$(human_bytes "$total")"
+
+    return 0
+}
+
+get_service_memory() {
+    local unit="$1"
+
+    local control_group=""
+    local memory_current=""
+    local memory_swap_current=""
+
+    local key
+    local value
+
+    while IFS='=' read -r key value; do
+        case "$key" in
+            ControlGroup)
+                control_group="$value"
+                ;;
+            MemoryCurrent)
+                memory_current="$value"
+                ;;
+            MemorySwapCurrent)
+                memory_swap_current="$value"
+                ;;
+        esac
+    done < <(
+        systemctl show "$unit" \
+            --property=ControlGroup \
+            --property=MemoryCurrent \
+            --property=MemorySwapCurrent \
+            2>/dev/null || true
+    )
+
+    local ram
+    local swap
+
+    ram="$(numeric_or_zero "$memory_current")"
+    swap="$(numeric_or_zero "$memory_swap_current")"
+
+    # Fallback langsung ke cgroup v2. Ini membantu pada systemd
+    # versi lama yang belum menyediakan MemorySwapCurrent.
+    if [[ -n "$control_group" ]]; then
+        local cgroup_path="/sys/fs/cgroup${control_group}"
+        local ram_file="$cgroup_path/memory.current"
+        local swap_file="$cgroup_path/memory.swap.current"
+
+        if [[ ! "$memory_current" =~ ^[0-9]+$ ]] && [[ -r "$ram_file" ]]; then
+            ram="$(numeric_or_zero "$(<"$ram_file")")"
+        fi
+
+        if [[ ! "$memory_swap_current" =~ ^[0-9]+$ ]] && [[ -r "$swap_file" ]]; then
+            swap="$(numeric_or_zero "$(<"$swap_file")")"
+        fi
+    fi
+
+    printf '%s %s\n' "$ram" "$swap"
+}
+
+get_running_services() {
+    systemctl list-units \
+        --type=service \
+        --state=running \
+        --no-legend \
+        --plain \
+        --no-pager 2>/dev/null |
+        awk '{print $1}'
+}
+
+check_service() {
+    local unit="$1"
+
+    [[ -n "$unit" ]] || return 0
+
+    local ram
+    local swap
+
+    read -r ram swap < <(get_service_memory "$unit")
+
+    ram="$(numeric_or_zero "$ram")"
+    swap="$(numeric_or_zero "$swap")"
+
+    local total=$((ram + swap))
+
+    local safe_unit
+    safe_unit="${unit//[^a-zA-Z0-9_.@-]/_}"
+
+    local state_file="$STATE_DIR/$safe_unit"
+    local now
+    now="$(date +%s)"
+
+    # Ketika penggunaan turun di bawah batas, status notifikasi
+    # dihapus agar kenaikan berikutnya bisa langsung diberitahukan.
+    if (( total < THRESHOLD_BYTES )); then
+        rm -f "$state_file"
+        return 0
+    fi
+
+    local last_notification=0
+
+    if [[ -r "$state_file" ]]; then
+        read -r last_notification < "$state_file" || last_notification=0
+
+        if [[ ! "$last_notification" =~ ^[0-9]+$ ]]; then
+            last_notification=0
+        fi
+    fi
+
+    # Jangan kirim notifikasi berulang selama cooldown masih aktif.
+    if (( now - last_notification < COOLDOWN_SECONDS )); then
+        return 0
+    fi
+
+    if send_notification "$unit" "$ram" "$swap" "$total"; then
+        printf '%s\n' "$now" > "$state_file"
+    fi
+}
+
+main() {
+    while IFS= read -r unit; do
+        check_service "$unit"
+    done < <(get_running_services)
+}
+
+main "$@"
